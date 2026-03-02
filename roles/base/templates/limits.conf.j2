@@ -1,0 +1,14 @@
+# =============================================================================
+# Limites système personnalisées
+# Généré par Ansible
+# =============================================================================
+
+# Limites pour l'utilisateur deploy
+{{ deploy_user }}    soft    nofile    65536
+{{ deploy_user }}    hard    nofile    65536
+{{ deploy_user }}    soft    nproc     4096
+{{ deploy_user }}    hard    nproc     4096
+
+# Limites globales
+*    soft    nofile    65536
+*    hard    nofile    65536

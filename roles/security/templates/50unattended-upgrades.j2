@@ -1,0 +1,38 @@
+// Configuration Unattended-Upgrades
+// Généré par Ansible - Ne pas modifier manuellement
+
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}";
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}ESMApps:${distro_codename}-apps-security";
+    "${distro_id}ESM:${distro_codename}-infra-security";
+    "${distro_id}:${distro_codename}-updates";
+};
+
+// Packages à ne jamais mettre à jour automatiquement
+Unattended-Upgrade::Package-Blacklist {
+    // "docker-ce";
+    // "docker-ce-cli";
+};
+
+// Supprimer automatiquement les dépendances inutilisées
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+
+// Supprimer automatiquement les nouveaux packages inutilisés
+Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+
+// Redémarrer automatiquement si nécessaire
+Unattended-Upgrade::Automatic-Reboot "false";
+
+// Heure de redémarrage automatique (si activé)
+Unattended-Upgrade::Automatic-Reboot-Time "03:00";
+
+// Envoyer uniquement en cas d'erreur
+Unattended-Upgrade::MailOnlyOnError "true";
+
+// Taille max du cache
+Unattended-Upgrade::MinimalSteps "true";
+
+// Logging
+Unattended-Upgrade::SyslogEnable "true";
+Unattended-Upgrade::SyslogFacility "daemon";

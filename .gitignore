@@ -1,0 +1,28 @@
+# Fichiers sensibles
+group_vars/vault.yml
+.vault_pass
+*.retry
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ansible
+/collections/
+/fact_cache/
+*.retry
+
+# Logs
+*.log
+
+# Secrets
+id_rsa
+id_ed25519
+*.pem
+*.key

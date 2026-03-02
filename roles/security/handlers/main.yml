@@ -1,0 +1,12 @@
+# =============================================================================
+# Handlers - Role security
+# =============================================================================
+---
+- name: restart fail2ban
+  systemd:
+    name: fail2ban
+    state: restarted
+
+- name: reload ufw
+  ufw:
+    state: reloaded

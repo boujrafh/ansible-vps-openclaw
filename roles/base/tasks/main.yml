@@ -1,0 +1,118 @@
+# =============================================================================
+# Role: base - Configuration système de base
+# =============================================================================
+---
+- name: Mise à jour du système
+  apt:
+    update_cache: yes
+    upgrade: dist
+    cache_valid_time: 3600
+  tags: [base, update]
+
+- name: Installer les paquets essentiels
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+      - vim
+      - htop
+      - iotop
+      - net-tools
+      - unzip
+      - jq
+      - ca-certificates
+      - gnupg
+      - lsb-release
+      - apt-transport-https
+      - software-properties-common
+      - python3-pip
+      - python3-setuptools
+      - logrotate
+      - cron
+      - rsync
+    state: present
+  tags: [base, packages]
+
+- name: Configurer le timezone
+  timezone:
+    name: "{{ timezone }}"
+  tags: [base, timezone]
+
+- name: Configurer le hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+  tags: [base, hostname]
+
+- name: Créer l'utilisateur deploy
+  user:
+    name: "{{ deploy_user }}"
+    groups: "{{ deploy_groups }}"
+    shell: /bin/bash
+    create_home: yes
+    password: "{{ vault_deploy_password | password_hash('sha512') }}"
+    state: present
+  tags: [base, user]
+
+- name: Configurer sudo sans mot de passe pour deploy
+  lineinfile:
+    path: /etc/sudoers.d/{{ deploy_user }}
+    line: "{{ deploy_user }} ALL=(ALL) NOPASSWD:ALL"
+    create: yes
+    mode: "0440"
+    validate: "visudo -cf %s"
+  tags: [base, user]
+
+- name: Ajouter la clé SSH pour deploy
+  authorized_key:
+    user: "{{ deploy_user }}"
+    key: "{{ vault_ssh_public_key }}"
+    exclusive: yes
+    state: present
+  tags: [base, ssh]
+
+- name: Configurer SSH (sshd_config)
+  template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: "0600"
+    validate: "sshd -t -f %s"
+    backup: yes
+  notify: restart sshd
+  tags: [base, ssh]
+
+- name: Sécuriser les permissions des fichiers critiques
+  file:
+    path: "{{ item.path }}"
+    owner: root
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "/etc/shadow", mode: "0640", group: "shadow" }
+    - { path: "/etc/gshadow", mode: "0640", group: "shadow" }
+    - { path: "/etc/passwd", mode: "0644" }
+    - { path: "/etc/group", mode: "0644" }
+    - { path: "/etc/ssh/sshd_config", mode: "0600" }
+  tags: [base, permissions]
+
+- name: Désactiver les services inutiles
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no
+  loop:
+    - snapd
+    - snapd.socket
+  ignore_errors: yes
+  tags: [base, services]
+
+- name: Configurer les limites système
+  template:
+    src: limits.conf.j2
+    dest: /etc/security/limits.d/99-custom.conf
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [base, limits]

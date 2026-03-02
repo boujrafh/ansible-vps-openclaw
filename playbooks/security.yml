@@ -1,0 +1,37 @@
+# =============================================================================
+# Playbook - Sécurité de base (UFW, Fail2ban, SSH, mises à jour auto)
+# =============================================================================
+---
+- name: "OpenClaw - Sécurité de base"
+  hosts: all
+  become: yes
+  vars_files:
+    - ../group_vars/all.yml
+    - ../group_vars/vault.yml
+
+  roles:
+    - role: security
+      tags: [security]
+
+  post_tasks:
+    - name: Vérifier le statut UFW
+      command: ufw status verbose
+      register: ufw_status
+      changed_when: false
+      tags: [security, check]
+
+    - name: Afficher le statut UFW
+      debug:
+        var: ufw_status.stdout_lines
+      tags: [security, check]
+
+    - name: Vérifier le statut Fail2ban
+      command: fail2ban-client status
+      register: fail2ban_status
+      changed_when: false
+      tags: [security, check]
+
+    - name: Afficher le statut Fail2ban
+      debug:
+        var: fail2ban_status.stdout_lines
+      tags: [security, check]

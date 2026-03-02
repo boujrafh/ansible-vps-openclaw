@@ -1,0 +1,11 @@
+# =============================================================================
+# Inventaire Local (pour exécution directe sur le VPS)
+# =============================================================================
+---
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
+      ansible_python_interpreter: /usr/bin/python3
+  vars:
+    env: production

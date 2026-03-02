@@ -1,0 +1,47 @@
+#!/bin/bash
+# =============================================================================
+# Script de vérification des certificats SSL
+# Généré par Ansible - Ne pas modifier manuellement
+# =============================================================================
+
+set -e
+
+CERT_FILE="{{ cloudflare_origin_cert_dir }}/origin.pem"
+WARNING_DAYS="{{ ssl_cert_warning_days }}"
+ADMIN_EMAIL="{{ admin_email }}"
+
+echo "=========================================="
+echo "SSL Certificate Check - $(date)"
+echo "=========================================="
+
+# Vérifier si le fichier existe
+if [ ! -f "$CERT_FILE" ]; then
+    echo "ERREUR: Certificat non trouvé: $CERT_FILE"
+    exit 1
+fi
+
+# Obtenir la date d'expiration
+EXPIRY_DATE=$(openssl x509 -in "$CERT_FILE" -noout -enddate | cut -d= -f2)
+EXPIRY_EPOCH=$(date -d "$EXPIRY_DATE" +%s)
+CURRENT_EPOCH=$(date +%s)
+
+# Calculer les jours restants
+DAYS_REMAINING=$(( ($EXPIRY_EPOCH - $CURRENT_EPOCH) / 86400 ))
+
+echo "Certificat: $CERT_FILE"
+echo "Date d'expiration: $EXPIRY_DATE"
+echo "Jours restants: $DAYS_REMAINING"
+
+# Vérifier si l'avertissement est nécessaire
+if [ $DAYS_REMAINING -lt $WARNING_DAYS ]; then
+    echo "ATTENTION: Le certificat expire dans moins de $WARNING_DAYS jours!"
+fi
+
+if [ $DAYS_REMAINING -lt 0 ]; then
+    echo "ERREUR CRITIQUE: Le certificat a expiré!"
+    exit 2
+fi
+
+echo "=========================================="
+echo "Vérification terminée"
+echo "=========================================="

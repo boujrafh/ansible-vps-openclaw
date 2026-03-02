@@ -1,0 +1,165 @@
+# =============================================================================
+# Variables communes - OpenClaw Infrastructure
+# Non sensibles - Peut être commité dans Git
+# =============================================================================
+---
+
+# =============================================================================
+# Informations générales
+# =============================================================================
+domain: "example.com"
+admin_email: "admin@example.com"
+timezone: "Europe/Brussels"
+
+# =============================================================================
+# SSH
+# =============================================================================
+ssh_port: 2222
+ssh_permit_root_login: "no"
+ssh_password_authentication: "no"
+ssh_max_auth_tries: 3
+ssh_login_grace_time: 30
+ssh_client_alive_interval: 300
+ssh_client_alive_count_max: 2
+
+# =============================================================================
+# Utilisateur deploy
+# =============================================================================
+deploy_user: deploy
+deploy_groups: "sudo,docker"
+
+# =============================================================================
+# UFW Firewall
+# =============================================================================
+ufw_enabled: true
+ufw_default_incoming: deny
+ufw_default_outgoing: allow
+ufw_rules:
+  - { rule: "allow", port: "{{ ssh_port }}", proto: "tcp", comment: "SSH" }
+  - { rule: "allow", port: "80", proto: "tcp", comment: "HTTP" }
+  - { rule: "allow", port: "443", proto: "tcp", comment: "HTTPS" }
+
+# IPs Cloudflare à whitelister
+cloudflare_ips_v4:
+  - "173.245.48.0/20"
+  - "103.21.244.0/22"
+  - "103.22.200.0/22"
+  - "103.31.4.0/22"
+  - "141.101.64.0/18"
+  - "108.162.192.0/18"
+  - "190.93.240.0/20"
+  - "188.114.96.0/20"
+  - "197.234.240.0/22"
+  - "198.41.128.0/17"
+  - "162.158.0.0/15"
+  - "104.16.0.0/13"
+  - "104.24.0.0/14"
+  - "172.64.0.0/13"
+  - "131.0.72.0/22"
+
+# =============================================================================
+# Fail2ban
+# =============================================================================
+fail2ban_enabled: true
+fail2ban_ignoreip: "127.0.0.1/8 ::1"
+fail2ban_bantime: 3600
+fail2ban_findtime: 600
+fail2ban_maxretry: 5
+fail2ban_jails:
+  - name: sshd
+    enabled: true
+    port: "{{ ssh_port }}"
+    filter: sshd
+    logpath: /var/log/auth.log
+    maxretry: 3
+    bantime: 3600
+    findtime: 600
+  - name: nginx-http-auth
+    enabled: true
+    port: "http,https"
+    filter: nginx-http-auth
+    logpath: /var/log/nginx/error.log
+    maxretry: 5
+    bantime: 1800
+  - name: nginx-botsearch
+    enabled: true
+    port: "http,https"
+    filter: nginx-botsearch
+    logpath: /var/log/nginx/access.log
+    maxretry: 3
+    bantime: 86400
+  - name: nginx-limit-req
+    enabled: true
+    port: "http,https"
+    filter: nginx-limit-req
+    logpath: /var/log/nginx/error.log
+    maxretry: 10
+    bantime: 3600
+
+# =============================================================================
+# Docker
+# =============================================================================
+docker_log_max_size: "10m"
+docker_log_max_file: "3"
+docker_network_name: "web"
+
+# =============================================================================
+# Nginx
+# =============================================================================
+nginx_user: "www-data"
+nginx_worker_processes: auto
+nginx_worker_connections: 1024
+nginx_keepalive_timeout: 65
+nginx_client_max_body_size: "50m"
+nginx_rate_limit_requests: "50r/s"
+nginx_rate_limit_burst: 20
+nginx_rate_limit_zone_size: "10m"
+
+nginx_security_headers:
+  X-Frame-Options: "SAMEORIGIN"
+  X-Content-Type-Options: "nosniff"
+  X-XSS-Protection: "1; mode=block"
+  Referrer-Policy: "strict-origin-when-cross-origin"
+
+# =============================================================================
+# Cloudflare SSL
+# =============================================================================
+cloudflare_origin_cert_dir: "/etc/nginx/ssl/cloudflare"
+ssl_cert_warning_days: 30
+
+# =============================================================================
+# OpenClaw
+# =============================================================================
+openclaw_version: "latest"
+openclaw_container_name: "openclaw"
+openclaw_port: 8080
+openclaw_data_dir: "/opt/openclaw/data"
+openclaw_config_dir: "/opt/openclaw/config"
+openclaw_subdomain: "claw"
+
+# Ressources (limites Docker)
+openclaw_cpu_limit: "1.0"
+openclaw_memory_limit: "512M"
+
+# Applications (dict utilisé par les templates Nginx)
+apps:
+  openclaw:
+    container_name: "{{ openclaw_container_name }}"
+    port: "{{ openclaw_port }}"
+    subdomain: "{{ openclaw_subdomain }}"
+    enabled: true
+
+# =============================================================================
+# Sécurité avancée
+# =============================================================================
+# Kernel hardening (sysctl)
+sysctl_hardening: true
+
+# Auditd
+auditd_enabled: true
+
+# Rkhunter
+rkhunter_enabled: true
+
+# Mises à jour automatiques
+unattended_upgrades_enabled: true

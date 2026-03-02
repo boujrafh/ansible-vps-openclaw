@@ -1,0 +1,150 @@
+# =============================================================================
+# Role: security - UFW, Fail2ban, hardening de base
+# =============================================================================
+---
+# ===== UFW Firewall =====
+- name: Installer UFW
+  apt:
+    name: ufw
+    state: present
+  when: ufw_enabled
+  tags: [security, ufw]
+
+- name: Réinitialiser UFW
+  ufw:
+    state: reset
+  when: ufw_enabled
+  tags: [security, ufw]
+
+- name: Politique par défaut - incoming
+  ufw:
+    direction: incoming
+    policy: "{{ ufw_default_incoming }}"
+  when: ufw_enabled
+  tags: [security, ufw]
+
+- name: Politique par défaut - outgoing
+  ufw:
+    direction: outgoing
+    policy: "{{ ufw_default_outgoing }}"
+  when: ufw_enabled
+  tags: [security, ufw]
+
+- name: Configurer les règles UFW
+  ufw:
+    rule: "{{ item.rule }}"
+    port: "{{ item.port }}"
+    proto: "{{ item.proto | default('tcp') }}"
+    comment: "{{ item.comment | default('') }}"
+  loop: "{{ ufw_rules }}"
+  when: ufw_enabled
+  tags: [security, ufw]
+
+- name: Whitelister les IPs Cloudflare (HTTP/HTTPS)
+  ufw:
+    rule: allow
+    src: "{{ item }}"
+    port: "80,443"
+    proto: tcp
+    comment: "Cloudflare IP"
+  loop: "{{ cloudflare_ips_v4 }}"
+  when: ufw_enabled
+  tags: [security, ufw, cloudflare]
+
+- name: Activer UFW
+  ufw:
+    state: enabled
+    logging: "on"
+  when: ufw_enabled
+  tags: [security, ufw]
+
+# ===== Fail2ban =====
+- name: Installer Fail2ban
+  apt:
+    name: fail2ban
+    state: present
+  when: fail2ban_enabled
+  tags: [security, fail2ban]
+
+- name: Configurer jail.local
+  template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: "0644"
+    backup: yes
+  notify: restart fail2ban
+  when: fail2ban_enabled
+  tags: [security, fail2ban]
+
+- name: Configurer le filtre nginx-limit-req
+  template:
+    src: nginx-limit-req.conf.j2
+    dest: /etc/fail2ban/filter.d/nginx-limit-req.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart fail2ban
+  when: fail2ban_enabled
+  tags: [security, fail2ban]
+
+- name: Configurer le filtre nginx-botsearch
+  template:
+    src: nginx-botsearch.conf.j2
+    dest: /etc/fail2ban/filter.d/nginx-botsearch.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart fail2ban
+  when: fail2ban_enabled
+  tags: [security, fail2ban]
+
+- name: Configurer le filtre portscan
+  template:
+    src: portscan.conf.j2
+    dest: /etc/fail2ban/filter.d/portscan.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart fail2ban
+  when: fail2ban_enabled
+  tags: [security, fail2ban]
+
+- name: Activer et démarrer Fail2ban
+  systemd:
+    name: fail2ban
+    state: started
+    enabled: yes
+  when: fail2ban_enabled
+  tags: [security, fail2ban]
+
+# ===== Mises à jour automatiques =====
+- name: Installer unattended-upgrades
+  apt:
+    name:
+      - unattended-upgrades
+      - apt-listchanges
+    state: present
+  when: unattended_upgrades_enabled
+  tags: [security, updates]
+
+- name: Configurer 20auto-upgrades
+  template:
+    src: 20auto-upgrades.j2
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    owner: root
+    group: root
+    mode: "0644"
+  when: unattended_upgrades_enabled
+  tags: [security, updates]
+
+- name: Configurer 50unattended-upgrades
+  template:
+    src: 50unattended-upgrades.j2
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    owner: root
+    group: root
+    mode: "0644"
+  when: unattended_upgrades_enabled
+  tags: [security, updates]

@@ -1,0 +1,50 @@
+# =============================================================================
+# Role: cloudflare - Certificats SSL Origin
+# =============================================================================
+---
+- name: Créer le répertoire SSL Cloudflare
+  file:
+    path: "{{ cloudflare_origin_cert_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  tags: [cloudflare, ssl]
+
+- name: Déployer le certificat Origin
+  copy:
+    content: "{{ vault_cloudflare_origin_cert }}"
+    dest: "{{ cloudflare_origin_cert_dir }}/origin.pem"
+    owner: root
+    group: root
+    mode: "0600"
+  notify: reload nginx
+  tags: [cloudflare, ssl]
+
+- name: Déployer la clé privée Origin
+  copy:
+    content: "{{ vault_cloudflare_origin_key }}"
+    dest: "{{ cloudflare_origin_cert_dir }}/origin-key.pem"
+    owner: root
+    group: root
+    mode: "0600"
+  notify: reload nginx
+  tags: [cloudflare, ssl]
+
+- name: Installer le script de vérification SSL
+  template:
+    src: check-ssl.sh.j2
+    dest: /usr/local/bin/check-ssl.sh
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [cloudflare, ssl]
+
+- name: Planifier la vérification SSL (cron quotidien)
+  cron:
+    name: "SSL certificate check"
+    hour: "6"
+    minute: "0"
+    job: "/usr/local/bin/check-ssl.sh >> /var/log/ssl-check.log 2>&1"
+    user: root
+  tags: [cloudflare, ssl]

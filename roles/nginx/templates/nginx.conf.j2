@@ -1,0 +1,83 @@
+# =============================================================================
+# Configuration principale Nginx
+# Généré par Ansible - Ne pas modifier manuellement
+# =============================================================================
+
+user {{ nginx_user }};
+worker_processes {{ nginx_worker_processes }};
+pid /run/nginx.pid;
+include /etc/nginx/modules-enabled/*.conf;
+
+events {
+    worker_connections {{ nginx_worker_connections }};
+    multi_accept on;
+    use epoll;
+}
+
+http {
+    # ==========================================================================
+    # Paramètres de base
+    # ==========================================================================
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout {{ nginx_keepalive_timeout }};
+    types_hash_max_size 2048;
+    server_tokens off;
+
+    # Taille maximale du corps de requête
+    client_max_body_size {{ nginx_client_max_body_size }};
+    client_body_buffer_size 128k;
+    client_header_buffer_size 1k;
+    large_client_header_buffers 4 16k;
+
+    # Timeouts
+    client_body_timeout 12;
+    client_header_timeout 12;
+    send_timeout 10;
+
+    # ==========================================================================
+    # Types MIME
+    # ==========================================================================
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # ==========================================================================
+    # Logging
+    # ==========================================================================
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for" '
+                    'rt=$request_time uct="$upstream_connect_time" '
+                    'uht="$upstream_header_time" urt="$upstream_response_time"';
+
+    log_format cloudflare '$http_cf_connecting_ip - $remote_user [$time_local] "$request" '
+                          '$status $body_bytes_sent "$http_referer" '
+                          '"$http_user_agent" $http_cf_ray';
+
+    access_log /var/log/nginx/access.log cloudflare;
+    error_log /var/log/nginx/error.log warn;
+
+    # ==========================================================================
+    # Gzip
+    # ==========================================================================
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_buffers 16 8k;
+    gzip_http_version 1.1;
+    gzip_types text/plain text/css application/json application/javascript
+               text/xml application/xml application/xml+rss text/javascript
+               image/svg+xml;
+
+    # ==========================================================================
+    # Rate Limiting
+    # ==========================================================================
+    include /etc/nginx/conf.d/rate-limiting.conf;
+
+    # ==========================================================================
+    # Sites
+    # ==========================================================================
+    include /etc/nginx/sites-enabled/*;
+}

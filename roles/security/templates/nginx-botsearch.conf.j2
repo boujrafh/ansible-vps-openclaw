@@ -1,0 +1,7 @@
+# Fail2ban filter for nginx bot search
+# Généré par Ansible
+
+[Definition]
+failregex = ^<HOST> .* "(GET|POST|HEAD) .*(wp-login|xmlrpc|wp-admin|phpmyadmin|pma|admin|\.env|\.git|config\.).*"
+            ^<HOST> .* "(GET|POST|HEAD) .*(shell|eval|exec|cmd|command).*"
+ignoreregex =

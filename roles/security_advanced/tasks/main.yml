@@ -1,0 +1,115 @@
+# =============================================================================
+# Role: security-advanced - Auditd, Rkhunter, Kernel hardening
+# =============================================================================
+---
+# ===== Auditd =====
+- name: Installer auditd
+  apt:
+    name:
+      - auditd
+      - audispd-plugins
+    state: present
+  when: auditd_enabled
+  tags: [security-advanced, auditd]
+
+- name: Configurer les règles d'audit
+  template:
+    src: audit.rules.j2
+    dest: /etc/audit/rules.d/hardening.rules
+    owner: root
+    group: root
+    mode: "0640"
+  notify: restart auditd
+  when: auditd_enabled
+  tags: [security-advanced, auditd]
+
+- name: Activer et démarrer auditd
+  systemd:
+    name: auditd
+    state: started
+    enabled: yes
+  when: auditd_enabled
+  tags: [security-advanced, auditd]
+
+# ===== Rkhunter =====
+- name: Installer rkhunter
+  apt:
+    name: rkhunter
+    state: present
+  when: rkhunter_enabled
+  tags: [security-advanced, rkhunter]
+
+- name: Configurer rkhunter
+  lineinfile:
+    path: /etc/rkhunter.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+  loop:
+    - { regexp: '^#?MIRRORS_MODE=', line: 'MIRRORS_MODE=0' }
+    - { regexp: '^#?UPDATE_MIRRORS=', line: 'UPDATE_MIRRORS=1' }
+    - { regexp: '^#?WEB_CMD=', line: 'WEB_CMD=""' }
+    - { regexp: '^#?PKGMGR=', line: 'PKGMGR=DPKG' }
+  when: rkhunter_enabled
+  tags: [security-advanced, rkhunter]
+
+- name: Mettre à jour la base rkhunter
+  command: rkhunter --propupd
+  changed_when: false
+  when: rkhunter_enabled
+  tags: [security-advanced, rkhunter]
+
+- name: Planifier le scan rkhunter (cron quotidien)
+  cron:
+    name: "Rkhunter daily scan"
+    hour: "4"
+    minute: "0"
+    job: "/usr/bin/rkhunter --check --skip-keypress --report-warnings-only >> /var/log/rkhunter-daily.log 2>&1"
+    user: root
+  when: rkhunter_enabled
+  tags: [security-advanced, rkhunter]
+
+# ===== Kernel Hardening (sysctl) =====
+- name: Appliquer le hardening kernel
+  template:
+    src: sysctl-hardening.conf.j2
+    dest: /etc/sysctl.d/99-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: apply sysctl
+  when: sysctl_hardening
+  tags: [security-advanced, kernel]
+
+# ===== Permissions sécurisées =====
+- name: Restreindre l'accès à cron
+  file:
+    path: "{{ item }}"
+    owner: root
+    group: root
+    mode: "0700"
+  loop:
+    - /etc/cron.d
+    - /etc/cron.daily
+    - /etc/cron.hourly
+    - /etc/cron.weekly
+    - /etc/cron.monthly
+  tags: [security-advanced, permissions]
+
+- name: Désactiver les core dumps
+  lineinfile:
+    path: /etc/security/limits.d/99-no-coredump.conf
+    line: "* hard core 0"
+    create: yes
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [security-advanced, coredump]
+
+- name: Désactiver les core dumps via sysctl
+  sysctl:
+    name: fs.suid_dumpable
+    value: "0"
+    state: present
+    reload: yes
+  tags: [security-advanced, coredump]

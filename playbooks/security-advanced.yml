@@ -1,0 +1,40 @@
+# =============================================================================
+# Playbook - Sécurité avancée (auditd, rkhunter, kernel hardening)
+# =============================================================================
+---
+- name: "OpenClaw - Sécurité avancée"
+  hosts: all
+  become: yes
+  vars_files:
+    - ../group_vars/all.yml
+    - ../group_vars/vault.yml
+
+  roles:
+    - role: security_advanced
+      tags: [security-advanced]
+
+  post_tasks:
+    - name: Vérifier auditd
+      command: auditctl -l
+      register: audit_rules
+      changed_when: false
+      when: auditd_enabled
+      tags: [security-advanced, check]
+
+    - name: Afficher les règles d'audit actives
+      debug:
+        var: audit_rules.stdout_lines
+      when: auditd_enabled and audit_rules is defined
+      tags: [security-advanced, check]
+
+    - name: Résumé sécurité avancée
+      debug:
+        msg: |
+          ====================================
+          Sécurité avancée configurée !
+          ====================================
+          Auditd: {{ 'Activé' if auditd_enabled else 'Désactivé' }}
+          Rkhunter: {{ 'Activé' if rkhunter_enabled else 'Désactivé' }}
+          Kernel Hardening: {{ 'Activé' if sysctl_hardening else 'Désactivé' }}
+          ====================================
+      tags: [always]

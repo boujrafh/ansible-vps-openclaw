@@ -1,0 +1,91 @@
+# =============================================================================
+# Configuration site par défaut (catch-all)
+# Généré par Ansible
+# =============================================================================
+
+# Redirection HTTP vers HTTPS
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+
+    # Pour les health checks
+    location /health {
+        access_log off;
+        return 200 "OK\n";
+        add_header Content-Type text/plain;
+    }
+
+    # Redirection vers HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# Serveur HTTPS par défaut (catch-all)
+server {
+    listen 443 ssl http2 default_server;
+    listen [::]:443 ssl http2 default_server;
+    server_name _;
+
+    # SSL Cloudflare Origin
+    include snippets/ssl-params.conf;
+
+    # Bloquer les requêtes sans host valide
+    return 444;
+}
+
+# Site principal {{ domain }}
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name {{ domain }} www.{{ domain }};
+
+    # SSL Cloudflare Origin
+    include snippets/ssl-params.conf;
+
+    # Real IP Cloudflare
+    include snippets/cloudflare-real-ip.conf;
+
+    # Headers de sécurité
+    include snippets/security-headers.conf;
+
+    # Rate limiting
+    limit_req zone=general burst={{ nginx_rate_limit_burst }} nodelay;
+
+    # Root
+    root /var/www/html;
+    index index.html;
+
+    # Health check
+    location /health {
+        access_log off;
+        return 200 "OK\n";
+        add_header Content-Type text/plain;
+    }
+
+    # Robots.txt
+    location = /robots.txt {
+        allow all;
+        log_not_found off;
+        access_log off;
+    }
+
+    # Favicon
+    location = /favicon.ico {
+        log_not_found off;
+        access_log off;
+    }
+
+    # Bloquer les fichiers cachés
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Page par défaut
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}

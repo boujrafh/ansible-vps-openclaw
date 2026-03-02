@@ -1,0 +1,37 @@
+# =============================================================================
+# Playbook - Mise à jour des certificats Cloudflare SSL
+# =============================================================================
+---
+- name: "OpenClaw - Certificats SSL"
+  hosts: all
+  become: yes
+  vars_files:
+    - ../group_vars/all.yml
+    - ../group_vars/vault.yml
+
+  roles:
+    - role: cloudflare
+      tags: [cloudflare]
+
+  post_tasks:
+    - name: Tester la configuration Nginx après mise à jour SSL
+      command: nginx -t
+      changed_when: false
+      tags: [cloudflare, check]
+
+    - name: Recharger Nginx
+      systemd:
+        name: nginx
+        state: reloaded
+      tags: [cloudflare]
+
+    - name: Vérifier le certificat
+      command: /usr/local/bin/check-ssl.sh
+      register: ssl_check
+      changed_when: false
+      tags: [cloudflare, check]
+
+    - name: Afficher le statut SSL
+      debug:
+        var: ssl_check.stdout_lines
+      tags: [cloudflare, check]

@@ -1,0 +1,107 @@
+# =============================================================================
+# Role: docker - Installation et configuration Docker
+# =============================================================================
+---
+- name: Supprimer les anciennes versions de Docker
+  apt:
+    name:
+      - docker
+      - docker-engine
+      - docker.io
+      - containerd
+      - runc
+    state: absent
+  tags: [docker, install]
+
+- name: Ajouter la clé GPG Docker
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+  tags: [docker, install]
+
+- name: Ajouter le repository Docker
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+    filename: docker
+  tags: [docker, install]
+
+- name: Installer Docker CE
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+      - docker-buildx-plugin
+    state: present
+    update_cache: yes
+  tags: [docker, install]
+
+- name: Ajouter l'utilisateur deploy au groupe docker
+  user:
+    name: "{{ deploy_user }}"
+    groups: docker
+    append: yes
+  tags: [docker, user]
+
+- name: Créer le répertoire de configuration Docker
+  file:
+    path: /etc/docker
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [docker, config]
+
+- name: Configurer le daemon Docker
+  template:
+    src: daemon.json.j2
+    dest: /etc/docker/daemon.json
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart docker
+  tags: [docker, config]
+
+- name: Créer le réseau Docker web
+  community.docker.docker_network:
+    name: "{{ docker_network_name }}"
+    driver: bridge
+    state: present
+  tags: [docker, network]
+
+- name: Configurer la rotation des logs Docker
+  template:
+    src: docker-logrotate.j2
+    dest: /etc/logrotate.d/docker
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [docker, logs]
+
+- name: Configurer le script de nettoyage Docker
+  template:
+    src: docker-cleanup.sh.j2
+    dest: /usr/local/bin/docker-cleanup.sh
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [docker, cleanup]
+
+- name: Planifier le nettoyage Docker (cron hebdomadaire)
+  cron:
+    name: "Docker cleanup"
+    weekday: "0"
+    hour: "3"
+    minute: "0"
+    job: "/usr/local/bin/docker-cleanup.sh >> /var/log/docker-cleanup.log 2>&1"
+    user: root
+  tags: [docker, cleanup]
+
+- name: Activer et démarrer Docker
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+  tags: [docker, service]

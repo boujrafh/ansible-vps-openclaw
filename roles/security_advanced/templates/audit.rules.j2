@@ -1,0 +1,67 @@
+# =============================================================================
+# Règles d'audit système
+# Généré par Ansible - Ne pas modifier manuellement
+# =============================================================================
+
+# Supprimer les anciennes règles
+-D
+
+# Augmenter le buffer
+-b 8192
+
+# Mode de défaillance (1 = afficher message, 2 = panique kernel)
+-f 1
+
+# =============================================================================
+# Surveillance des fichiers critiques
+# =============================================================================
+
+# Fichiers d'authentification
+-w /etc/passwd -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/gshadow -p wa -k identity
+-w /etc/sudoers -p wa -k sudoers
+-w /etc/sudoers.d/ -p wa -k sudoers
+
+# Configuration SSH
+-w /etc/ssh/sshd_config -p wa -k sshd_config
+-w /etc/ssh/ssh_config -p wa -k ssh_config
+
+# Configuration réseau
+-w /etc/hosts -p wa -k hosts
+-w /etc/hostname -p wa -k hostname
+-w /etc/resolv.conf -p wa -k resolv
+
+# Cron
+-w /etc/crontab -p wa -k cron
+-w /etc/cron.d/ -p wa -k cron
+-w /var/spool/cron/ -p wa -k cron
+
+# Docker
+-w /etc/docker/ -p wa -k docker_config
+-w /usr/bin/docker -p x -k docker_cmd
+-w /usr/bin/containerd -p x -k docker_cmd
+
+# Nginx
+-w /etc/nginx/ -p wa -k nginx_config
+
+# =============================================================================
+# Surveillance des actions privilégiées
+# =============================================================================
+
+# Utilisation de sudo
+-a always,exit -F arch=b64 -S execve -F euid=0 -F auid>=1000 -F auid!=4294967295 -k privileged
+-a always,exit -F arch=b32 -S execve -F euid=0 -F auid>=1000 -F auid!=4294967295 -k privileged
+
+# Modifications du temps
+-a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time_change
+-a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time_change
+
+# Chargement de modules kernel
+-w /sbin/insmod -p x -k modules
+-w /sbin/rmmod -p x -k modules
+-w /sbin/modprobe -p x -k modules
+
+# Rendre les règles immuables (nécessite reboot pour modifier)
+-e 2

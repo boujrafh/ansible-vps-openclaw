@@ -1,0 +1,65 @@
+# =============================================================================
+# Secrets - OpenClaw Infrastructure
+# =============================================================================
+# INSTRUCTIONS:
+#   1. Copier ce fichier: cp vault.yml.example vault.yml
+#   2. Générer les secrets: ./scripts/generate-secrets.sh
+#   3. Remplir les valeurs ci-dessous
+#   4. Chiffrer: ansible-vault encrypt group_vars/vault.yml
+# =============================================================================
+---
+
+# =============================================================================
+# VPS
+# =============================================================================
+vault_vps_ip: "YOUR_VPS_IP_HERE"
+
+# =============================================================================
+# SSH
+# =============================================================================
+vault_ssh_public_key: "ssh-ed25519 AAAA... votre-cle-publique"
+
+# =============================================================================
+# Mot de passe utilisateur deploy
+# =============================================================================
+vault_deploy_password: "GENERATE_WITH_SCRIPT"
+
+# =============================================================================
+# Cloudflare
+# =============================================================================
+vault_cloudflare_zone_id: "YOUR_ZONE_ID"
+
+# Certificat Origin SSL (copier depuis Cloudflare Dashboard)
+vault_cloudflare_origin_cert: |
+  -----BEGIN CERTIFICATE-----
+  COLLER_VOTRE_CERTIFICAT_ICI
+  -----END CERTIFICATE-----
+
+vault_cloudflare_origin_key: |
+  -----BEGIN PRIVATE KEY-----
+  COLLER_VOTRE_CLE_PRIVEE_ICI
+  -----END PRIVATE KEY-----
+
+# =============================================================================
+# OpenClaw
+# =============================================================================
+# Token 1Password Service Account (si utilisé)
+vault_op_service_account_token: ""
+
+# Secret interne OpenClaw
+vault_openclaw_secret: "GENERATE_WITH_SCRIPT"
+
+# =============================================================================
+# Base de données (si OpenClaw en a besoin)
+# =============================================================================
+vault_postgres_user: "openclaw"
+vault_postgres_password: "GENERATE_WITH_SCRIPT"
+vault_postgres_db: "openclaw"
+
+# =============================================================================
+# SMTP (notifications)
+# =============================================================================
+vault_smtp_host: "smtp.example.com"
+vault_smtp_port: 587
+vault_smtp_user: "notifications@example.com"
+vault_smtp_password: "VOTRE_MOT_DE_PASSE_SMTP"

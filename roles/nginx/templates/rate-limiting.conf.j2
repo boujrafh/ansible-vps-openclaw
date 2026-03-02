@@ -1,0 +1,15 @@
+# =============================================================================
+# Configuration Rate Limiting
+# Généré par Ansible
+# =============================================================================
+
+# Zone de rate limiting
+limit_req_zone $binary_remote_addr zone=general:{{ nginx_rate_limit_zone_size }} rate={{ nginx_rate_limit_requests }};
+limit_req_zone $binary_remote_addr zone=login:10m rate=5r/m;
+limit_req_zone $binary_remote_addr zone=api:10m rate=30r/s;
+
+# Status pour les requêtes limitées
+limit_req_status 429;
+
+# Log uniquement les requêtes rejetées
+limit_req_log_level warn;

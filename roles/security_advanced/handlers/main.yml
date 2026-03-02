@@ -1,0 +1,13 @@
+# =============================================================================
+# Handlers - Role security-advanced
+# =============================================================================
+---
+- name: restart auditd
+  service:
+    name: auditd
+    state: restarted
+  # Note: auditd ne supporte pas systemd restart, on utilise service
+
+- name: apply sysctl
+  command: sysctl --system
+  changed_when: false

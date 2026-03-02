@@ -1,0 +1,57 @@
+# =============================================================================
+# Playbook - Configuration initiale (connexion root, premier déploiement)
+# =============================================================================
+---
+- name: "OpenClaw - Configuration initiale"
+  hosts: all
+  become: yes
+  vars_files:
+    - ../group_vars/all.yml
+    - ../group_vars/vault.yml
+
+  # Pour le premier déploiement, on se connecte en root sur le port 22
+  vars:
+    ansible_port: 22
+    ansible_user: root
+
+  tasks:
+    - name: Mise à jour du système
+      apt:
+        update_cache: yes
+        upgrade: dist
+      tags: [init]
+
+    - name: Installer les paquets de base
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - sudo
+          - openssh-server
+        state: present
+      tags: [init]
+
+  roles:
+    - role: base
+      tags: [base]
+
+    - role: security
+      tags: [security]
+
+  post_tasks:
+    - name: Information importante
+      debug:
+        msg: |
+          ====================================
+          Configuration initiale terminée !
+          ====================================
+          Le port SSH est maintenant: {{ ssh_port }}
+          Utilisateur: {{ deploy_user }}
+          
+          Prochaine connexion:
+          ssh -p {{ ssh_port }} {{ deploy_user }}@{{ ansible_host }}
+          
+          Lancez ensuite le déploiement complet:
+          ansible-playbook playbooks/site.yml --ask-vault-pass
+          ====================================
+      tags: [always]

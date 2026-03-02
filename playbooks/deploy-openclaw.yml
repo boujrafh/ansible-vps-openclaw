@@ -1,0 +1,47 @@
+# =============================================================================
+# Playbook - Déployer/Mettre à jour OpenClaw uniquement
+# =============================================================================
+---
+- name: "OpenClaw - Déploiement application"
+  hosts: all
+  become: yes
+  vars_files:
+    - ../group_vars/all.yml
+    - ../group_vars/vault.yml
+
+  # Variable pour forcer le pull de l'image
+  vars:
+    openclaw_force_pull: "{{ force_pull | default(false) }}"
+
+  roles:
+    - role: openclaw
+      tags: [openclaw]
+
+  post_tasks:
+    - name: Vérifier les conteneurs Docker
+      command: docker ps --format "table {% raw %}{{.Names}}\t{{.Status}}\t{{.Ports}}{% endraw %}"
+      register: docker_ps
+      changed_when: false
+      tags: [openclaw, check]
+
+    - name: Afficher les conteneurs
+      debug:
+        var: docker_ps.stdout_lines
+      tags: [openclaw, check]
+
+    - name: Résumé du déploiement
+      debug:
+        msg: |
+          ====================================
+          OpenClaw déployé !
+          ====================================
+          URL: https://{{ openclaw_subdomain }}.{{ domain }}
+          Conteneur: {{ openclaw_container_name }}
+          Port local: {{ openclaw_port }}
+          Version: {{ openclaw_version }}
+          ====================================
+          
+          Pour forcer le pull de l'image:
+          ansible-playbook playbooks/deploy-openclaw.yml -e force_pull=true --ask-vault-pass
+          ====================================
+      tags: [always]

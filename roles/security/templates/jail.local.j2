@@ -1,0 +1,66 @@
+# =============================================================================
+# Configuration Fail2ban - jail.local
+# Généré par Ansible - Ne pas modifier manuellement
+# =============================================================================
+
+[DEFAULT]
+# Ignorer les IPs locales
+ignoreip = {{ fail2ban_ignoreip }}
+
+# Durée du ban (en secondes)
+bantime = {{ fail2ban_bantime }}
+
+# Fenêtre de temps pour détecter les tentatives
+findtime = {{ fail2ban_findtime }}
+
+# Nombre de tentatives avant ban
+maxretry = {{ fail2ban_maxretry }}
+
+# Backend de détection
+backend = systemd
+
+# Action par défaut
+banaction = ufw
+banaction_allports = ufw
+
+# =============================================================================
+# JAILS
+# =============================================================================
+
+{% for jail in fail2ban_jails %}
+[{{ jail.name }}]
+enabled = {{ jail.enabled | lower }}
+port = {{ jail.port }}
+filter = {{ jail.filter }}
+logpath = {{ jail.logpath }}
+maxretry = {{ jail.maxretry }}
+bantime = {{ jail.bantime }}
+{% if jail.findtime is defined %}
+findtime = {{ jail.findtime }}
+{% endif %}
+
+{% endfor %}
+
+# =============================================================================
+# Jail SSH avancé avec détection plus stricte
+# =============================================================================
+[sshd-aggressive]
+enabled = true
+port = {{ ssh_port }}
+filter = sshd[mode=aggressive]
+logpath = /var/log/auth.log
+maxretry = 2
+bantime = 86400
+findtime = 3600
+
+# =============================================================================
+# Protection contre les scans de ports
+# =============================================================================
+[portscan]
+enabled = true
+filter = portscan
+action = ufw[name=portscan]
+logpath = /var/log/ufw.log
+maxretry = 3
+bantime = 86400
+findtime = 60

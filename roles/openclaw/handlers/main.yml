@@ -1,0 +1,13 @@
+# =============================================================================
+# Handlers - Role openclaw
+# =============================================================================
+---
+- name: restart openclaw
+  community.docker.docker_compose_v2:
+    project_src: /opt/openclaw
+    state: restarted
+
+- name: stop openclaw
+  community.docker.docker_compose_v2:
+    project_src: /opt/openclaw
+    state: stopped

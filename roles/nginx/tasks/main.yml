@@ -1,0 +1,150 @@
+# =============================================================================
+# Role: nginx - Reverse proxy avec SSL Cloudflare
+# =============================================================================
+---
+- name: Installer Nginx
+  apt:
+    name: nginx
+    state: present
+  tags: [nginx, install]
+
+- name: Créer les répertoires Nginx
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - /etc/nginx/snippets
+    - /etc/nginx/conf.d
+    - /etc/nginx/sites-available
+    - /etc/nginx/sites-enabled
+    - /var/www/html
+  tags: [nginx, config]
+
+- name: Configurer nginx.conf principale
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "nginx -t -c %s"
+    backup: yes
+  notify: reload nginx
+  tags: [nginx, config]
+
+- name: Configurer les paramètres SSL
+  template:
+    src: ssl-params.conf.j2
+    dest: /etc/nginx/snippets/ssl-params.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+  tags: [nginx, ssl]
+
+- name: Configurer les headers de sécurité
+  template:
+    src: security-headers.conf.j2
+    dest: /etc/nginx/snippets/security-headers.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+  tags: [nginx, security]
+
+- name: Configurer les paramètres de proxy
+  template:
+    src: proxy-params.conf.j2
+    dest: /etc/nginx/snippets/proxy-params.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+  tags: [nginx, proxy]
+
+- name: Configurer le rate limiting
+  template:
+    src: rate-limiting.conf.j2
+    dest: /etc/nginx/conf.d/rate-limiting.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+  tags: [nginx, ratelimit]
+
+- name: Configurer Cloudflare Real IP
+  template:
+    src: cloudflare-real-ip.conf.j2
+    dest: /etc/nginx/snippets/cloudflare-real-ip.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+  tags: [nginx, cloudflare]
+
+- name: Supprimer la config par défaut
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: reload nginx
+  tags: [nginx, config]
+
+- name: Configurer le site par défaut (catch-all)
+  template:
+    src: default-site.conf.j2
+    dest: /etc/nginx/sites-available/default-secure
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+  tags: [nginx, config]
+
+- name: Activer le site par défaut
+  file:
+    src: /etc/nginx/sites-available/default-secure
+    dest: /etc/nginx/sites-enabled/default-secure
+    state: link
+  notify: reload nginx
+  tags: [nginx, config]
+
+- name: Configurer le site OpenClaw
+  template:
+    src: openclaw-site.conf.j2
+    dest: /etc/nginx/sites-available/openclaw
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+  tags: [nginx, openclaw]
+
+- name: Activer le site OpenClaw
+  file:
+    src: /etc/nginx/sites-available/openclaw
+    dest: /etc/nginx/sites-enabled/openclaw
+    state: link
+  notify: reload nginx
+  tags: [nginx, openclaw]
+
+- name: Configurer la page de maintenance
+  template:
+    src: maintenance.html.j2
+    dest: /var/www/html/maintenance.html
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [nginx, maintenance]
+
+- name: Tester la configuration Nginx
+  command: nginx -t
+  changed_when: false
+  tags: [nginx, test]
+
+- name: Activer et démarrer Nginx
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+  tags: [nginx, service]

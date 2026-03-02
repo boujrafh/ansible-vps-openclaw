@@ -1,0 +1,39 @@
+#!/bin/bash
+# =============================================================================
+# Docker Cleanup Script
+# Généré par Ansible - Ne pas modifier manuellement
+# =============================================================================
+
+set -e
+
+echo "=========================================="
+echo "Docker Cleanup - $(date)"
+echo "=========================================="
+
+# Supprimer les conteneurs arrêtés
+echo "Suppression des conteneurs arrêtés..."
+docker container prune -f
+
+# Supprimer les images non utilisées
+echo "Suppression des images non utilisées..."
+docker image prune -f
+
+# Supprimer les volumes non utilisés
+echo "Suppression des volumes non utilisés..."
+docker volume prune -f
+
+# Supprimer les réseaux non utilisés
+echo "Suppression des réseaux non utilisés..."
+docker network prune -f
+
+# Supprimer le cache de build
+echo "Suppression du cache de build..."
+docker builder prune -f
+
+# Afficher l'espace disque utilisé par Docker
+echo "Espace disque Docker:"
+docker system df
+
+echo "=========================================="
+echo "Cleanup terminé - $(date)"
+echo "=========================================="

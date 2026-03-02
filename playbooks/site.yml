@@ -1,0 +1,61 @@
+# =============================================================================
+# Playbook principal - Déploiement complet OpenClaw
+# Exécute: base + security + docker + cloudflare + nginx + openclaw
+# =============================================================================
+---
+- name: "OpenClaw - Déploiement complet"
+  hosts: all
+  become: yes
+  vars_files:
+    - ../group_vars/all.yml
+    - ../group_vars/vault.yml
+
+  pre_tasks:
+    - name: Vérifier la connexion
+      ping:
+      tags: [always]
+
+    - name: Collecter les facts
+      setup:
+      tags: [always]
+
+    - name: Afficher les informations système
+      debug:
+        msg: |
+          Hostname: {{ ansible_hostname }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Kernel: {{ ansible_kernel }}
+          IP: {{ ansible_default_ipv4.address | default('N/A') }}
+          RAM: {{ ansible_memtotal_mb }}MB
+      tags: [always]
+
+  roles:
+    - role: base
+      tags: [base]
+
+    - role: security
+      tags: [security]
+
+    - role: docker
+      tags: [docker]
+
+    - role: cloudflare
+      tags: [cloudflare]
+
+    - role: nginx
+      tags: [nginx]
+
+    - role: openclaw
+      tags: [openclaw]
+
+  post_tasks:
+    - name: Afficher le résumé
+      debug:
+        msg: |
+          ====================================
+          Déploiement terminé !
+          ====================================
+          SSH: ssh -p {{ ssh_port }} {{ deploy_user }}@{{ ansible_host }}
+          OpenClaw: https://{{ openclaw_subdomain }}.{{ domain }}
+          ====================================
+      tags: [always]
