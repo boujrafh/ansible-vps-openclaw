@@ -16,6 +16,24 @@
     - "/opt/openclaw/home"
   tags: [openclaw, dirs]
 
+- name: Déployer le Dockerfile
+  template:
+    src: Dockerfile.j2
+    dest: /opt/openclaw/Dockerfile
+    owner: "{{ deploy_user }}"
+    group: docker
+    mode: "0640"
+  tags: [openclaw, dockerfile]
+
+- name: Déployer la configuration OpenClaw
+  template:
+    src: openclaw.json.j2
+    dest: /opt/openclaw/home/openclaw.json
+    owner: "{{ deploy_user }}"
+    group: docker
+    mode: "0600"
+  tags: [openclaw, config]
+
 - name: Déployer le fichier docker-compose
   template:
     src: docker-compose.yml.j2
@@ -42,10 +60,11 @@
     force_source: yes
   tags: [openclaw, pull]
 
-- name: Démarrer OpenClaw avec Docker Compose
+- name: Builder et démarrer OpenClaw avec Docker Compose
   community.docker.docker_compose_v2:
     project_src: /opt/openclaw
     state: present
+    build: always
     pull: "{% if openclaw_force_pull | default(false) %}always{% else %}policy{% endif %}"
   register: openclaw_compose
   tags: [openclaw, deploy]

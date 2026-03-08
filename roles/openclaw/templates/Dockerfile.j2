@@ -1,0 +1,41 @@
+# =============================================================================
+# Dockerfile OpenClaw avec Chromium
+# Généré par Ansible - Ne pas modifier manuellement
+# =============================================================================
+FROM ghcr.io/openclaw/openclaw:{{ openclaw_version }}
+
+USER root
+
+# Installation de Chromium et dépendances
+RUN apt-get update && apt-get install -y \
+    chromium \
+    chromium-driver \
+    fonts-liberation \
+    libappindicator3-1 \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libgdk-pixbuf2.0-0 \
+    libnspr4 \
+    libnss3 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    xdg-utils \
+    libgbm1 \
+    libgtk-3-0 \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+# Créer le répertoire pour le profil Chrome
+RUN mkdir -p /home/node/.openclaw/chrome-profile && \
+    chown -R node:node /home/node/.openclaw
+
+USER node
+
+# Configuration par défaut
+ENV CHROME_BIN=/usr/bin/chromium
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true

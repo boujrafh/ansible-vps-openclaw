@@ -5,18 +5,21 @@
 
 services:
   openclaw:
-    image: ghcr.io/openclaw/openclaw:{{ openclaw_version }}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: openclaw:local
     container_name: {{ openclaw_container_name }}
     restart: unless-stopped
 
     # Sécurité du conteneur
     security_opt:
+      - seccomp:unconfined
       - no-new-privileges:true
+    cap_add:
+      - SYS_ADMIN
     cap_drop:
       - ALL
-    read_only: true
-    tmpfs:
-      - /tmp:noexec,nosuid,size=100m
 
     # Limites de ressources
     deploy:
@@ -29,9 +32,10 @@ services:
           memory: 128M
 
     volumes:
-      - {{ openclaw_config_dir }}:/app/config:ro
+      - {{ openclaw_config_dir }}:/app/config:rw
       - {{ openclaw_data_dir }}:/app/data:rw
       - /opt/openclaw/home:/home/node/.openclaw:rw
+      - /tmp:/tmp:rw
 
     env_file:
       - .env
@@ -50,4 +54,3 @@ services:
       options:
         max-size: "{{ docker_log_max_size }}"
         max-file: "{{ docker_log_max_file }}"
-
