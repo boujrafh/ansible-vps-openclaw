@@ -7,8 +7,8 @@
 # =============================================================================
 # Informations générales
 # =============================================================================
-domain: "bh-systems.be"
-admin_email: "hicham.boujraf@bh-systems.be"
+domain: "domaine"
+admin_email: "admin@domain.com"
 timezone: "Europe/Brussels"
 
 # =============================================================================
@@ -163,3 +163,4 @@ rkhunter_enabled: true
 
 # Mises à jour automatiques
 unattended_upgrades_enabled: true
+
