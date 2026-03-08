@@ -1,0 +1,79 @@
+# =============================================================================
+# Déploiement sécurisé - Vérifie SSH avant chaque étape critique
+# =============================================================================
+---
+- name: "OpenClaw - Déploiement sécurisé avec vérification SSH"
+  hosts: localhost
+  become: yes
+  vars_files:
+    - ../group_vars/all.yml
+    - ../group_vars/vault.yml
+
+  tasks:
+    - name: "ÉTAPE 1/6: Base (SSH + User)"
+      include_role:
+        name: base
+      tags: [base]
+
+    - name: "VÉRIFICATION SSH après base"
+      pause:
+        prompt: |
+          ============================================
+          VÉRIFICATION SSH
+          ============================================
+          Tentez de vous connecter dans un autre terminal:
+          ssh -p {{ ssh_port }} {{ deploy_user }}@{{ ansible_default_ipv4.address }}
+          
+          Si la connexion fonctionne, appuyez sur ENTREE pour continuer.
+          Si ça ne fonctionne PAS, appuyez sur Ctrl+C pour annuler.
+          ============================================
+      tags: [base]
+
+    - name: "ÉTAPE 2/6: Security (UFW + Fail2ban)"
+      include_role:
+        name: security
+      tags: [security]
+
+    - name: "VÉRIFICATION SSH après UFW"
+      pause:
+        prompt: |
+          ============================================
+          VÉRIFICATION SSH APRÈS FIREWALL
+          ============================================
+          UFW a été configuré. Vérifiez que vous pouvez toujours vous connecter:
+          ssh -p {{ ssh_port }} {{ deploy_user }}@{{ ansible_default_ipv4.address }}
+          
+          Si la connexion fonctionne, appuyez sur ENTREE pour continuer.
+          Si ça ne fonctionne PAS, vérifiez la console VNC de votre hébergeur.
+          ============================================
+      tags: [security]
+
+    - name: "ÉTAPE 3/6: Docker"
+      include_role:
+        name: docker
+      tags: [docker]
+
+    - name: "ÉTAPE 4/6: Cloudflare SSL"
+      include_role:
+        name: cloudflare
+      tags: [cloudflare]
+
+    - name: "ÉTAPE 5/6: Nginx"
+      include_role:
+        name: nginx
+      tags: [nginx]
+
+    - name: "ÉTAPE 6/6: OpenClaw"
+      include_role:
+        name: openclaw
+      tags: [openclaw]
+
+    - name: Résumé final
+      debug:
+        msg: |
+          ====================================
+          Déploiement sécurisé terminé !
+          ====================================
+          SSH: ssh -p {{ ssh_port }} {{ deploy_user }}@{{ ansible_default_ipv4.address }}
+          OpenClaw: https://{{ openclaw_subdomain }}.{{ domain }}
+          ====================================

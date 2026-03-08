@@ -1,0 +1,64 @@
+# =============================================================================
+# Playbook de vérification SSH - S'assurer que l'accès SSH reste possible
+# =============================================================================
+---
+- name: "Vérification SSH et Firewall"
+  hosts: localhost
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: Afficher la configuration SSH actuelle
+      debug:
+        msg: |
+          ====================================
+          Configuration SSH
+          ====================================
+          Port SSH: {{ ssh_port }}
+          Utilisateur: {{ deploy_user }}
+          IP du serveur: {{ ansible_default_ipv4.address }}
+          Commande de connexion: ssh -p {{ ssh_port }} {{ deploy_user }}@{{ ansible_default_ipv4.address }}
+          ====================================
+
+    - name: Vérifier que SSH écoute sur le port configuré
+      shell: "ss -tlnp | grep ':{{ ssh_port }}'"
+      register: ssh_listen
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Afficher statut SSH
+      debug:
+        msg: "SSH écoute sur le port {{ ssh_port }}: {{ 'OK' if ssh_listen.rc == 0 else 'ERREUR' }}"
+
+    - name: Vérifier UFW status
+      shell: "ufw status | grep '{{ ssh_port }}'"
+      register: ufw_ssh
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Afficher statut UFW pour SSH
+      debug:
+        msg: "UFW autorise port {{ ssh_port }}: {{ ufw_ssh.stdout if ufw_ssh.rc == 0 else 'NON TROUVÉ' }}"
+
+    - name: Vérifier que le service SSH est actif
+      systemd:
+        name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+        state: started
+      check_mode: yes
+      register: ssh_service
+
+    - name: Afficher statut service SSH
+      debug:
+        msg: "Service SSH: {{ 'Actif' if not ssh_service.changed else 'Inactif' }}"
+
+    - name: WARNING si SSH n'est pas configuré correctement
+      fail:
+        msg: |
+          ============================================
+          ATTENTION: SSH n'est pas configuré correctement!
+          ============================================
+          Ne pas continuer le déploiement sans réparer SSH.
+          Risque de perdre l'accès au serveur!
+          ============================================
+      when: ssh_listen.rc != 0 or ufw_ssh.rc != 0
+      ignore_errors: yes
