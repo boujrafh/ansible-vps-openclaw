@@ -7,8 +7,8 @@
 # =============================================================================
 # Informations générales
 # =============================================================================
-domain: "example.com"
-admin_email: "admin@example.com"
+domain: "bh-systems.be"
+admin_email: "hicham.boujraf@bh-systems.be"
 timezone: "Europe/Brussels"
 
 # =============================================================================
