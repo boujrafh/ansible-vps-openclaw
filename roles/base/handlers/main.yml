@@ -4,5 +4,5 @@
 ---
 - name: restart sshd
   systemd:
-    name: sshd
+    name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
     state: restarted
