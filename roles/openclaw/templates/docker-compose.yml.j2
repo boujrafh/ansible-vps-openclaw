@@ -39,11 +39,11 @@ services:
     network_mode: host
 
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:18791/"]
+      test: ["CMD", "wget", "-q", "--spider", "--tries=1", "http://localhost:18791/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
 
     logging:
       driver: json-file
