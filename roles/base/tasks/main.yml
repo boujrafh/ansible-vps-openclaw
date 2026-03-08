@@ -44,6 +44,12 @@
     name: "{{ inventory_hostname }}"
   tags: [base, hostname]
 
+- name: Créer le groupe docker
+  group:
+    name: docker
+    state: present
+  tags: [base, user]
+
 - name: Créer l'utilisateur deploy
   user:
     name: "{{ deploy_user }}"

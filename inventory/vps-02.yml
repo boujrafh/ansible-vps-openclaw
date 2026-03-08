@@ -1,0 +1,12 @@
+# Inventaire - VPS OpenClaw 02 (176.57.184.246)
+---
+all:
+  hosts:
+    vps-openclaw-02:
+      ansible_host: "176.57.184.246"
+      ansible_port: "{{ ssh_port }}"
+      ansible_user: deploy
+      ansible_ssh_private_key_file: "~/.ssh/id_ed25519"
+  vars:
+    env: production
+    openclaw_subdomain: "portal-8x2k"

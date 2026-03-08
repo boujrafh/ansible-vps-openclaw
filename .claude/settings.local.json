@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//mnt/c/Devops/**)",
+      "Bash(ansible --version)",
+      "Bash(gh pr list)"
+    ]
+  }
+}

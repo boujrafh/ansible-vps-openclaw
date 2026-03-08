@@ -30,7 +30,6 @@
     owner: root
     group: root
     mode: "0644"
-    validate: "nginx -t -c %s"
     backup: yes
   notify: reload nginx
   tags: [nginx, config]

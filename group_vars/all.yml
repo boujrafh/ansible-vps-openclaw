@@ -132,10 +132,10 @@ ssl_cert_warning_days: 30
 # =============================================================================
 openclaw_version: "latest"
 openclaw_container_name: "openclaw"
-openclaw_port: 8080
+openclaw_port: 18791
 openclaw_data_dir: "/opt/openclaw/data"
 openclaw_config_dir: "/opt/openclaw/config"
-openclaw_subdomain: "claw"
+openclaw_subdomain: "portal-7x2k"
 
 # Ressources (limites Docker)
 openclaw_cpu_limit: "1.0"

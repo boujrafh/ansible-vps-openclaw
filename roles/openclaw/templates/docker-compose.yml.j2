@@ -3,8 +3,6 @@
 # Généré par Ansible - Ne pas modifier manuellement
 # =============================================================================
 
-version: '3.8'
-
 services:
   openclaw:
     image: ghcr.io/openclaw/openclaw:{{ openclaw_version }}
@@ -30,21 +28,18 @@ services:
           cpus: '0.25'
           memory: 128M
 
-    ports:
-      - "127.0.0.1:{{ openclaw_port }}:8080"
-
     volumes:
       - {{ openclaw_config_dir }}:/app/config:ro
       - {{ openclaw_data_dir }}:/app/data:rw
+      - /opt/openclaw/home:/home/node/.openclaw:rw
 
     env_file:
       - .env
 
-    networks:
-      - {{ docker_network_name }}
+    network_mode: host
 
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:18791/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -56,6 +51,3 @@ services:
         max-size: "{{ docker_log_max_size }}"
         max-file: "{{ docker_log_max_file }}"
 
-networks:
-  {{ docker_network_name }}:
-    external: true
