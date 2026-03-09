@@ -11,25 +11,6 @@
       "token": "{{ vault_openclaw_secret | default('change-me-in-vault') }}"
     }
   },
-  "browser": {
-    "enabled": true,
-    "profile": "openclaw",
-    "running": false,
-    "headless": true,
-    "noSandbox": true,
-    "executablePath": "/usr/bin/chromium",
-    "userDataDir": "/home/node/.openclaw/chrome-profile",
-    "cdpPort": 18800,
-    "cdpUrl": "http://127.0.0.1:18800",
-    "args": [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-accelerated-2d-canvas",
-      "--disable-gpu",
-      "--window-size=1920,1080"
-    ]
-  },
   "meta": {
     "lastTouchedVersion": "{{ openclaw_version }}",
     "lastTouchedAt": "{{ ansible_date_time.iso8601 }}"
