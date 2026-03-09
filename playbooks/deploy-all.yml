@@ -183,11 +183,15 @@
             src: ../roles/openclaw/templates/openclaw.json.j2
             dest: /opt/openclaw/home/openclaw.json
           
-        - name: Builder et démarrer OpenClaw
-          community.docker.docker_compose_v2:
-            project_src: /opt/openclaw
-            state: present
-            build: always
+        - name: Builder l'image OpenClaw
+          command: docker build -t openclaw:local -f /opt/openclaw/Dockerfile /opt/openclaw
+          args:
+            chdir: /opt/openclaw
+
+        - name: Démarrer OpenClaw avec docker-compose
+          command: docker-compose up -d
+          args:
+            chdir: /opt/openclaw
       tags: [openclaw]
 
     - name: "[8/8] Résumé et instructions"
