@@ -32,10 +32,10 @@
             marker: "# {mark} ANSIBLE MANAGED BLOCK"
           notify: restart sshd
 
-        - name: Créer l'utilisateur deploy
+        - name: Créer l'utilisateur deploy (sans groupe docker pour l'instant)
           user:
             name: "{{ deploy_user }}"
-            groups: "sudo,docker"
+            groups: "sudo"
             shell: /bin/bash
             create_home: yes
             password: "{{ vault_deploy_password | password_hash('sha512') }}"
@@ -100,6 +100,11 @@
             name:
               - docker.io
               - docker-compose
+            state: present
+
+        - name: Créer le groupe docker
+          group:
+            name: docker
             state: present
 
         - name: Ajouter deploy au groupe docker

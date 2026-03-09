@@ -57,7 +57,7 @@
     - name: Créer l'utilisateur deploy
       user:
         name: "{{ deploy_user }}"
-        groups: "sudo,docker"
+        groups: "sudo"
         shell: /bin/bash
         create_home: yes
         password: "{{ vault_deploy_password | password_hash('sha512') }}"
@@ -74,6 +74,17 @@
       systemd:
         name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
         state: restarted
+
+    - name: Créer le groupe docker
+      group:
+        name: docker
+        state: present
+
+    - name: Ajouter deploy au groupe docker
+      user:
+        name: "{{ deploy_user }}"
+        groups: docker
+        append: yes
 
     # ========== ÉTAPE 3: Firewall (PORTS 22 ET 2222 ouverts) ==========
     - name: Réinitialiser UFW
