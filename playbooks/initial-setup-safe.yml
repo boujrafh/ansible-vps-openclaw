@@ -1,0 +1,134 @@
+# =============================================================================
+# Configuration initiale sécurisée - Garde le port 22 ouvert jusqu'à validation
+# =============================================================================
+---
+- name: "Initial Setup Sécurisé - OpenClaw"
+  hosts: all
+  become: yes
+  gather_facts: yes
+  vars_files:
+    - ../group_vars/all.yml
+    - ../group_vars/vault.yml
+
+  tasks:
+    # ========== ÉTAPE 1: Préparation système ==========
+    - name: Mise à jour du système
+      apt:
+        update_cache: yes
+        upgrade: dist
+        cache_valid_time: 3600
+
+    - name: Installer les paquets essentiels
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - vim
+          - htop
+          - ufw
+          - fail2ban
+          - ansible
+        state: present
+
+    # ========== ÉTAPE 2: Configuration SSH (ports 22 + 2222) ==========
+    - name: Configurer SSH sur les deux ports (22 et 2222)
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?Port "
+        line: "Port 22\nPort {{ ssh_port }}"
+        state: present
+      notify: restart sshd
+
+    - name: Désactiver root login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PermitRootLogin"
+        line: "PermitRootLogin no"
+      notify: restart sshd
+
+    - name: Activer auth par clé uniquement
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PasswordAuthentication"
+        line: "PasswordAuthentication no"
+      notify: restart sshd
+
+    - name: Créer l'utilisateur deploy
+      user:
+        name: "{{ deploy_user }}"
+        groups: "sudo,docker"
+        shell: /bin/bash
+        create_home: yes
+        password: "{{ vault_deploy_password | password_hash('sha512') }}"
+        state: present
+
+    - name: Ajouter la clé SSH pour deploy
+      authorized_key:
+        user: "{{ deploy_user }}"
+        key: "{{ vault_ssh_public_key }}"
+        exclusive: yes
+        state: present
+
+    - name: Redémarrer SSH maintenant
+      systemd:
+        name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+        state: restarted
+
+    # ========== ÉTAPE 3: Firewall (PORTS 22 ET 2222 ouverts) ==========
+    - name: Réinitialiser UFW
+      ufw:
+        state: reset
+
+    - name: Politique par défaut - deny incoming
+      ufw:
+        direction: incoming
+        policy: deny
+
+    - name: Autoriser SSH port 22 (temporaire)
+      ufw:
+        rule: allow
+        port: 22
+        proto: tcp
+        comment: "SSH temporaire"
+
+    - name: Autoriser SSH port 2222 (définitif)
+      ufw:
+        rule: allow
+        port: "{{ ssh_port }}"
+        proto: tcp
+        comment: "SSH définitif"
+
+    - name: Autoriser HTTP/HTTPS
+      ufw:
+        rule: allow
+        port: "80,443"
+        proto: tcp
+
+    - name: Activer UFW
+      ufw:
+        state: enabled
+        logging: "on"
+
+    # ========== ÉTAPE 4: Instructions finales ==========
+    - name: Afficher les instructions IMPORTANTES
+      debug:
+        msg: |
+          ============================================
+          ⚠️  CONFIGURATION INITIALE TERMINÉE
+          ============================================
+          
+          🔑 Teste IMMÉDIATEMENT la connexion SSH:
+             ssh -p {{ ssh_port }} {{ deploy_user }}@{{ ansible_host }}
+          
+          Si ça marche, exécute ce playbook pour fermer le port 22:
+             ansible-playbook playbooks/close-ssh-22.yml -i inventory/localhost.yml -c local
+          
+          Si ça ne marche PAS, tu peux toujours te connecter en root sur port 22
+          ============================================
+
+  handlers:
+    - name: restart sshd
+      systemd:
+        name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+        state: restarted

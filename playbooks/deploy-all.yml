@@ -1,0 +1,209 @@
+# =============================================================================
+# Déploiement complet - Tout en une seule commande
+# =============================================================================
+---
+- name: "OpenClaw - Déploiement complet (Initial Setup + Application)"
+  hosts: localhost
+  become: yes
+  gather_facts: yes
+  vars_files:
+    - ../group_vars/all.yml
+    - ../group_vars/vault.yml
+
+  tasks:
+    - name: "[1/8] Mise à jour système et paquets"
+      apt:
+        update_cache: yes
+        upgrade: dist
+        cache_valid_time: 3600
+      tags: [system]
+
+    - name: "[2/8] Configuration SSH (ports 22 + 2222)"
+      block:
+        - name: Configurer SSH sur les deux ports
+          blockinfile:
+            path: /etc/ssh/sshd_config
+            block: |
+              Port 22
+              Port {{ ssh_port }}
+              PermitRootLogin no
+              PasswordAuthentication no
+              PubkeyAuthentication yes
+            marker: "# {mark} ANSIBLE MANAGED BLOCK"
+          notify: restart sshd
+
+        - name: Créer l'utilisateur deploy
+          user:
+            name: "{{ deploy_user }}"
+            groups: "sudo,docker"
+            shell: /bin/bash
+            create_home: yes
+            password: "{{ vault_deploy_password | password_hash('sha512') }}"
+            state: present
+
+        - name: Ajouter la clé SSH pour deploy
+          authorized_key:
+            user: "{{ deploy_user }}"
+            key: "{{ vault_ssh_public_key }}"
+            exclusive: yes
+            state: present
+
+        - name: Redémarrer SSH
+          systemd:
+            name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+            state: restarted
+      tags: [ssh]
+
+    - name: "[3/8] Firewall UFW (22 + 2222 ouverts temporairement)"
+      block:
+        - name: Réinitialiser UFW
+          ufw:
+            state: reset
+
+        - name: Politique par défaut
+          ufw:
+            direction: incoming
+            policy: deny
+
+        - name: Autoriser les deux ports SSH
+          ufw:
+            rule: allow
+            port: "{{ item }}"
+            proto: tcp
+          loop:
+            - 22
+            - "{{ ssh_port }}"
+
+        - name: Autoriser HTTP/HTTPS
+          ufw:
+            rule: allow
+            port: "80,443"
+            proto: tcp
+
+        - name: Whitelister Cloudflare
+          ufw:
+            rule: allow
+            src: "{{ item }}"
+            port: "80,443"
+            proto: tcp
+          loop: "{{ cloudflare_ips_v4 }}"
+
+        - name: Activer UFW
+          ufw:
+            state: enabled
+      tags: [firewall]
+
+    - name: "[4/8] Installation Docker"
+      block:
+        - name: Installer Docker
+          apt:
+            name:
+              - docker.io
+              - docker-compose
+            state: present
+
+        - name: Ajouter deploy au groupe docker
+          user:
+            name: "{{ deploy_user }}"
+            groups: docker
+            append: yes
+
+        - name: Démarrer Docker
+          systemd:
+            name: docker
+            state: started
+            enabled: yes
+      tags: [docker]
+
+    - name: "[5/8] Configuration SSL Cloudflare"
+      block:
+        - name: Créer le répertoire SSL
+          file:
+            path: /etc/nginx/ssl/cloudflare
+            state: directory
+            mode: "0700"
+
+        - name: Déployer le certificat Origin
+          copy:
+            content: "{{ vault_cloudflare_origin_cert }}"
+            dest: /etc/nginx/ssl/cloudflare/origin.pem
+            mode: "0600"
+
+        - name: Déployer la clé privée
+          copy:
+            content: "{{ vault_cloudflare_origin_key }}"
+            dest: /etc/nginx/ssl/cloudflare/origin-key.pem
+            mode: "0600"
+      tags: [ssl]
+
+    - name: "[6/8] Installation Nginx"
+      apt:
+        name: nginx
+        state: present
+      tags: [nginx]
+
+    - name: "[7/8] Configuration OpenClaw"
+      block:
+        - name: Créer les répertoires
+          file:
+            path: "{{ item }}"
+            state: directory
+            owner: "{{ deploy_user }}"
+            group: docker
+            mode: "0750"
+          loop:
+            - /opt/openclaw/data
+            - /opt/openclaw/config
+            - /opt/openclaw/home
+
+        - name: Déployer docker-compose.yml
+          template:
+            src: ../roles/openclaw/templates/docker-compose.yml.j2
+            dest: /opt/openclaw/docker-compose.yml
+
+        - name: Déployer Dockerfile
+          template:
+            src: ../roles/openclaw/templates/Dockerfile.j2
+            dest: /opt/openclaw/Dockerfile
+
+        - name: Déployer .env
+          template:
+            src: ../roles/openclaw/templates/openclaw.env.j2
+            dest: /opt/openclaw/.env
+
+        - name: Déployer openclaw.json
+          template:
+            src: ../roles/openclaw/templates/openclaw.json.j2
+            dest: /opt/openclaw/home/openclaw.json
+          
+        - name: Builder et démarrer OpenClaw
+          community.docker.docker_compose_v2:
+            project_src: /opt/openclaw
+            state: present
+            build: always
+      tags: [openclaw]
+
+    - name: "[8/8] Résumé et instructions"
+      debug:
+        msg: |
+          ============================================
+          ✅ DÉPLOIEMENT TERMINÉ
+          ============================================
+          
+          🌐 OpenClaw: https://{{ openclaw_subdomain | default('portal') }}.{{ domain }}
+          
+          🔑 Teste la connexion SSH sur le nouveau port:
+             ssh -p {{ ssh_port }} {{ deploy_user }}@{{ ansible_default_ipv4.address }}
+          
+          Si ça marche, ferme le port 22:
+             ansible-playbook playbooks/close-ssh-22.yml -c local
+          
+          Si ça ne marche PAS, tu peux encore utiliser:
+             ssh root@{{ ansible_default_ipv4.address }} (port 22)
+          ============================================
+
+  handlers:
+    - name: restart sshd
+      systemd:
+        name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+        state: restarted
