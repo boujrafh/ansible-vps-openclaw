@@ -95,11 +95,13 @@
 
     - name: "[4/8] Installation Docker"
       block:
-        - name: Installer Docker
+        - name: Installer Docker et dépendances
           apt:
             name:
               - docker.io
               - docker-compose
+              - docker-compose-plugin
+              - python3-docker
             state: present
 
         - name: Créer le groupe docker
