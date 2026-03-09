@@ -20,6 +20,18 @@
 
     - name: "[2/8] Configuration SSH (ports 22 + 2222)"
       block:
+        - name: Désactiver ssh.socket (qui override la config)
+          systemd:
+            name: ssh.socket
+            state: stopped
+            enabled: no
+          ignore_errors: yes
+
+        - name: Activer ssh.service
+          systemd:
+            name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+            enabled: yes
+
         - name: Configurer SSH sur les deux ports
           blockinfile:
             path: /etc/ssh/sshd_config
@@ -30,7 +42,6 @@
               PasswordAuthentication no
               PubkeyAuthentication yes
             marker: "# {mark} ANSIBLE MANAGED BLOCK"
-          notify: restart sshd
 
         - name: Créer l'utilisateur deploy (sans groupe docker pour l'instant)
           user:
@@ -48,10 +59,18 @@
             exclusive: yes
             state: present
 
-        - name: Redémarrer SSH
+        - name: Redémarrer SSH service (pas socket)
           systemd:
             name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
             state: restarted
+          
+        - name: Vérifier que SSH écoute sur les deux ports
+          wait_for:
+            port: "{{ item }}"
+            timeout: 10
+          loop:
+            - 22
+            - "{{ ssh_port }}"
       tags: [ssh]
 
     - name: "[3/8] Firewall UFW (22 + 2222 ouverts temporairement)"

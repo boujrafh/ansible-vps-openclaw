@@ -3,32 +3,60 @@
 # =============================================================================
 ---
 - name: "Fermer le port SSH 22 (sécurisation)"
-  hosts: all
+  hosts: localhost
   become: yes
   gather_facts: no
 
   tasks:
-    - name: Supprimer le port 22 de SSH
+    - name: "⚠️  VÉRIFICATION: Tester SSH sur port 2222"
+      wait_for:
+        port: "{{ ssh_port | default(2222) }}"
+        timeout: 5
+      register: ssh_port_check
+      ignore_errors: yes
+
+    - name: "❌ ARRÊT: Le port 2222 ne répond pas!"
+      fail:
+        msg: |
+          ============================================
+          ❌ ERREUR: SSH port {{ ssh_port | default(2222) }} ne fonctionne pas!
+          
+          Ne PAS fermer le port 22 ou vous perdrez l'accès!
+          
+          Déboguer:
+            - ss -tlnp | grep ssh
+            - systemctl status ssh
+            - cat /etc/ssh/sshd_config | grep Port
+          ============================================
+      when: ssh_port_check.failed
+
+    - name: "✅ Confirmation - SSH 2222 fonctionne"
+      debug:
+        msg: "SSH port {{ ssh_port | default(2222) }} est accessible. Sécurisation..."
+
+    - name: Retirer le port 22 de SSH
       lineinfile:
         path: /etc/ssh/sshd_config
         regexp: "^Port 22$"
         state: absent
       notify: restart sshd
 
-    - name: Supprimer la règle UFW pour port 22
+    - name: Fermer le port 22 dans UFW
       ufw:
         rule: deny
         port: 22
         proto: tcp
-        delete: yes
 
     - name: Afficher confirmation
       debug:
         msg: |
           ============================================
-          ✅ Port 22 fermé avec succès
+          ✅ Port 22 fermé avec succès!
           ============================================
           Connexion SSH uniquement sur le port {{ ssh_port | default(2222) }}
+          
+          Commande de connexion:
+            ssh -p {{ ssh_port | default(2222) }} {{ deploy_user | default('deploy') }}@{{ ansible_host }}
           ============================================
 
   handlers:
